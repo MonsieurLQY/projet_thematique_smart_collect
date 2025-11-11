@@ -2,7 +2,7 @@
 cache/
 
 # Ignore all files in outputs/maps/ except take_position.txt
-outputs/maps/
+outputs/maps/**
 !outputs/maps/take_position.txt
 
 outputs/data/Points_prepared.json
