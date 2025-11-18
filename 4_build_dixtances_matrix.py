@@ -1,3 +1,4 @@
+# Import required libraries for data processing, network analysis, and file handling
 import json
 from pathlib import Path
 
@@ -44,47 +45,51 @@ def build_combined_distance_matrix(
         每个点匹配到的道路图节点 ID（与 dist_matrix 行列一一对应）。
     """
 
-    # Step 1: 读取 json，合并前 size 组的 node_index，并去重
+    # Step 1: Read JSON and merge node indices from the first 'size' solution groups, removing duplicates
     with open(json_path, "r", encoding="utf-8") as f:
         all_solutions = json.load(f)
 
     if size > len(all_solutions):
-        raise ValueError(f"size={size} 超过 json 中解的总数 {len(all_solutions)}")
+        raise ValueError(f"size={size} exceeds total number of solutions in JSON: {len(all_solutions)}")
 
+    # Collect all unique node indices from the first 'size' solution groups
     combined_indices = set()
     for group in all_solutions[:size]:
         combined_indices.update(group)
 
-    combined_indices = sorted(combined_indices)  # 固定顺序，方便复现
+    combined_indices = sorted(combined_indices)  # Fixed order for reproducibility
 
-    # Step 2: 从 CSV 中筛选出这些点的经纬度
+    # Step 2: Extract coordinates for these nodes from the CSV file
     df = pd.read_csv(csv_path)
     subset = df[df["node_index"].isin(combined_indices)].copy()
     subset = subset.sort_values("node_index").reset_index(drop=True)
 
-    # Step 3: 加载道路网络，并转为无向图（忽略单行道方向）
+    # Step 3: Load the road network and convert to undirected graph (ignore one-way street directions)
     G = ox.load_graphml(graphml_path)
     G = G.to_undirected()
 
-    # Step 4: 利用经纬度匹配到最近的道路节点
+    # Step 4: Match coordinates to nearest road network nodes using OSMnx distance utility
     lons = subset["lon"].values
     lats = subset["lat"].values
     road_nodes = ox.distance.nearest_nodes(G, X=lons, Y=lats)
 
-    # Step 5: 构建距离矩阵（道路最短路径长度）
+    # Step 5: Build the distance matrix using road network shortest path lengths
     n = len(road_nodes)
     dist_matrix = np.zeros((n, n), dtype=float)
 
+    # Compute shortest paths between all pairs of nodes
     for i in range(n):
         for j in range(i + 1, n):
             try:
+                # Calculate shortest path distance on the road network (weight="length" for distance in meters)
                 dist = nx.shortest_path_length(G, road_nodes[i], road_nodes[j], weight="length")
             except nx.NetworkXNoPath:
+                # If no path exists between nodes, set distance to infinity
                 dist = np.inf
             dist_matrix[i, j] = dist
-            dist_matrix[j, i] = dist
+            dist_matrix[j, i] = dist  # Symmetric matrix
 
-    # 可选：保存到磁盘
+    # Optional: Save distance matrix and metadata to disk for later use
     if out_matrix_path is not None:
         out_matrix_path = Path(out_matrix_path)
         out_matrix_path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +98,7 @@ def build_combined_distance_matrix(
     if out_meta_path is not None:
         out_meta_path = Path(out_meta_path)
         out_meta_path.parent.mkdir(parents=True, exist_ok=True)
+        # Store metadata: size, input file paths, node indices, and corresponding road network node IDs
         meta = {
             "size": size,
             "json_path": str(json_path),
@@ -108,13 +114,16 @@ def build_combined_distance_matrix(
 
 
 if __name__ == "__main__":
-    # 你可以在这里改 size，比如 10
+    # Configuration: Change 'size' value to combine different numbers of solution groups
+    # Note: size cannot exceed 20 (the total number of groups in the JSON file)
     size = 10
 
-    # 输出路径你也可以自己改名
+    # Output file paths - can be customized as needed
     matrix_out = f"outputs/data/distance_matrix_size{size}.npy"
     meta_out = f"outputs/data/distance_matrix_size{size}_meta.json"
 
+    # Build the combined distance matrix by calling the main function
+    #！！！ attention: the name of the json file should be consistent with that in 3_generate_candidate_indices.py  !!!
     dist_matrix, subset_points, road_nodes = build_combined_distance_matrix(
         size=size,
         json_path="outputs/data/random_solutions_prepared.json",
@@ -124,7 +133,8 @@ if __name__ == "__main__":
         out_meta_path=meta_out,
     )
 
-    print(f"完成：size={size} 的合并距离矩阵已生成并保存：")
-    print("矩阵形状:", dist_matrix.shape)
-    print("矩阵文件:", matrix_out)
-    print("meta 文件:", meta_out)
+    # Print summary information about the generated distance matrix
+    print(f"Successfully generated and saved combined distance matrix for size={size}:")
+    print("Matrix shape:", dist_matrix.shape)
+    print("Matrix file:", matrix_out)
+    print("Metadata file:", meta_out)

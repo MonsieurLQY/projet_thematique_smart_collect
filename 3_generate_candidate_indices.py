@@ -2,6 +2,8 @@ import json
 import random
 import os
 
+
+# ！！！ attention: the name of the output file should be consistent with that in 4_build_distances_matrix.py  !!!
 def generate_random_solutions(output_path="solutions.json", num_groups=20, group_size=10, value_range=(0, 1292)):
     """
     生成随机解文件，每组包含若干随机整数。
@@ -25,4 +27,5 @@ def generate_random_solutions(output_path="solutions.json", num_groups=20, group
     print(f"包含 {num_groups} 组，每组 {group_size} 个整数。")
 
 if __name__ == "__main__":
+    # modify the name of output file as needed
     generate_random_solutions("outputs/data/random_solutions.json")
