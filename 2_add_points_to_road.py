@@ -19,7 +19,7 @@ data_dir.mkdir(parents=True, exist_ok=True)
 
 # 加载先前生成的 GraphML 文件
 # Load the previously saved GraphML file
-graph_path = graph_dir / "marseille_1er_densified_network.graphml"
+graph_path = graph_dir / "marseille_1er_road_network.graphml"
 G = ox.load_graphml(graph_path)
 
 # 投影为米制坐标系（方便测距和插值）

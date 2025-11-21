@@ -1,0 +1,30 @@
+{
+  "size": 1,
+  "json_path": "outputs/data/random_solutions_prepared.json",
+  "csv_path": "outputs/data/marseille_1er_graph_nodes_projected.csv",
+  "graphml_path": "outputs/maps/marseille_1er_road_network.graphml",
+  "node_indices": [
+    373,
+    471,
+    703,
+    897,
+    916,
+    1043,
+    1050,
+    1052,
+    1132,
+    1133
+  ],
+  "road_nodes": [
+    1274867027,
+    33781435,
+    26761387,
+    26781767,
+    1701385786,
+    33781424,
+    33781432,
+    33781433,
+    33781350,
+    33781350
+  ]
+}

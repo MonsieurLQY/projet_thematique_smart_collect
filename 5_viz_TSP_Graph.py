@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-可视化：在 GraphML 路网上标注 JSON 第一组点（来自 CSV 的坐标），并导出 PNG。
+可视化：在 GraphML 路网上标注 JSON 前 size 组点（来自 CSV 的坐标），并导出 PNG。
 依赖：pandas, matplotlib, networkx, shapely
 """
 
@@ -15,10 +15,11 @@ import pandas as pd
 from shapely import wkt as shapely_wkt
 
 # ====== 修改为你的文件路径（已按你当前文件名填写）======
-size = 1
+# size 表示：使用 JSON 里前 size 组解，合并这些点并可视化
+size = 10
 GRAPHML_PATH = "outputs/maps/marseille_1er_road_network.graphml"
 CSV_PATH     = "outputs/data/marseille_1er_graph_nodes_projected.csv"
-JSON_PATH    = "outputs/data/random_solutions.json"
+JSON_PATH    = "outputs/data/random_solutions_prepared.json"
 # ===================================================
 
 
@@ -58,12 +59,32 @@ def fix_graph_types(G: nx.Graph) -> nx.Graph:
     return G
 
 
-def load_first_solution_indices(json_path: str):
-    """JSON 结构期望是 [[3,5,12,...], [...], ...]"""
+def load_first_n_solution_indices(json_path: str, size: int):
+    """
+    从 JSON 里读取前 size 组解，合并并去重，返回一个编号列表。
+
+    JSON 结构期望是：
+    [
+        [1043, 1050, ...],   # 第 1 组
+        [796, 1275, ...],    # 第 2 组
+        ...
+    ]
+    """
     with open(json_path, "r", encoding="utf-8") as f:
         sols = json.load(f)
-    first = sols[0] if sols else []
-    return list(first)
+
+    if not sols:
+        return []
+
+    if size > len(sols):
+        raise ValueError(f"size={size} 超过 JSON 中解的总数 {len(sols)}")
+
+    combined = set()
+    for group in sols[:size]:
+        combined.update(group)
+
+    # 排个序，便于复现和阅读
+    return sorted(combined)
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -97,7 +118,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 def filter_subset(df: pd.DataFrame, indices):
     sub = df[df["cid"].isin(indices)].copy()
     if sub.empty:
-        raise ValueError("第一组解的编号在 CSV 中未匹配到任何行")
+        raise ValueError("前 size 组解的编号在 CSV 中未匹配到任何行")
     sub = sub.sort_values(by="cid").reset_index(drop=True)
     return sub
 
@@ -114,16 +135,14 @@ def graph_is_lonlat(G: nx.Graph) -> bool:
 
 
 # ---------- 主函数 ----------
-
-# ---------- 主函数 ----------
 def main():
     # 1) 读 GraphML
     G = nx.read_graphml(GRAPHML_PATH)
     G = G.to_undirected()
     G = fix_graph_types(G)
 
-    # 2) 读 JSON 的第一组 id_index
-    indices = load_first_solution_indices(JSON_PATH)
+    # 2) 读 JSON 的前 size 组 id_index，合并 & 去重
+    indices = load_first_n_solution_indices(JSON_PATH, size=size)
 
     # 3) 读 CSV 并筛选对应点
     df_raw = pd.read_csv(CSV_PATH)
@@ -177,7 +196,7 @@ def main():
     else:
         dx, dy = 0.001, 0.001
 
-    # 6) 标注 id_index（cid），略作偏移 + 白色描边提高清晰度
+    # 6) 标注 cid，略作偏移 + 白色描边提高清晰度
     text_effect = [pe.withStroke(linewidth=2.5, foreground="white")]
     for i, row in sub.iterrows():
         x = px[i]
@@ -195,14 +214,14 @@ def main():
     ax.set_xlim(min(px) - xpad, max(px) + xpad)
     ax.set_ylim(min(py) - ypad, max(py) + ypad)
 
-    ax.set_title("First solution points on Marseille 1er road network")
+    ax.set_title(f"First {size} solution groups (merged) on Marseille 1er road network")
     ax.set_xlabel("X (lon or meters)")
     ax.set_ylabel("Y (lat or meters)")
     ax.set_aspect("equal", adjustable="box")
     plt.tight_layout()
 
     # 7) 导出
-    PNG_OUT = f"outputs/maps/TSP_Graph_{size}.png"
+    PNG_OUT = f"outputs/maps/TSP_Graph_first_{size}_groups.png"
     out_dir = os.path.dirname(PNG_OUT)
     if out_dir and not os.path.exists(out_dir):
         os.makedirs(out_dir, exist_ok=True)
