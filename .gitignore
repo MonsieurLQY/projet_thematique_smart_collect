@@ -8,4 +8,5 @@ outputs/maps/**
 outputs/data/Points_prepared.json
 outputs/data/tsp_graph_first_solution.gexf
 *.zip
+*.pdf
 
