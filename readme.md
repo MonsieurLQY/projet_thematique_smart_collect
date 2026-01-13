@@ -15,6 +15,10 @@ Follow the steps in order to fully reproduce this project.
 5 Mark the grid points on the map with custom dimensions.
 
 ---
+创建虚拟环境，安装需要的依赖。
+Create a virtual environment and install the required dependencies.
+
+---
 ## 1_Extract_graph_map_Marseille_1st_Arrondismt
 
 input:
